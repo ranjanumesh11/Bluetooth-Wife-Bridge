@@ -1,0 +1,264 @@
+# ESPHome BLE Client Configuration
+# Advanced config with direct BLE commands to your bed
+# Copy this to bed-ble-client.yaml and customize with your bed's details
+
+esphome:
+  name: bed-ble-controller
+  friendly_name: Adjustable Bed Controller
+
+esp32:
+  board: esp32dev
+  framework:
+    type: esp-idf  # Required for reliable BLE client
+
+logger:
+  level: DEBUG  # Set to INFO after testing
+
+api:
+  encryption:
+    key: !secret api_encryption_key
+
+ota:
+  - platform: esphome
+    password: !secret ota_password
+
+wifi:
+  ssid: !secret wifi_ssid
+  password: !secret wifi_password
+  
+  ap:
+    ssid: "Bed-Controller Fallback"
+    password: !secret fallback_password
+
+captive_portal:
+
+# BLE tracker to find devices
+esp32_ble_tracker:
+  scan_parameters:
+    active: true
+
+# BLE Client - connect directly to your bed
+# REPLACE WITH YOUR BED'S MAC ADDRESS (from nRF Connect)
+ble_client:
+  - mac_address: "AA:BB:CC:DD:EE:FF"  # ⚠️ CHANGE THIS
+    id: bed_ble
+    auto_connect: true  # Automatically reconnect if disconnected
+
+# Global variables for tracking state
+globals:
+  - id: head_moving
+    type: bool
+    restore_value: no
+    initial_value: 'false'
+  
+  - id: foot_moving
+    type: bool
+    restore_value: no
+    initial_value: 'false'
+
+# Emergency Stop - Always available
+switch:
+  - platform: template
+    name: "🛑 BED EMERGENCY STOP"
+    id: bed_stop
+    icon: mdi:stop-circle
+    optimistic: true
+    turn_on_action:
+      - ble_client.ble_write:
+          id: bed_ble
+          service_uuid: "FFE0"  # ⚠️ Verify with nRF Connect
+          characteristic_uuid: "FFE1"  # ⚠️ Verify with nRF Connect
+          # Richmat stop command (verify yours!)
+          value: [0x40, 0x02, 0x73, 0x00, 0x00, 0x0B, 0x40]
+      - globals.set:
+          id: head_moving
+          value: 'false'
+      - globals.set:
+          id: foot_moving
+          value: 'false'
+      - logger.log: "STOP command sent"
+
+  # Head Up - Hold-to-move pattern
+  - platform: template
+    name: "Bed Head Up"
+    id: bed_head_up
+    icon: mdi:arrow-up-bold
+    optimistic: true
+    turn_on_action:
+      - globals.set:
+          id: head_moving
+          value: 'true'
+      # Repeat command every 300ms while "held"
+      - while:
+          condition:
+            lambda: 'return id(head_moving);'
+          then:
+            - ble_client.ble_write:
+                id: bed_ble
+                service_uuid: "FFE0"
+                characteristic_uuid: "FFE1"
+                # Richmat head up (CHANGE FOR YOUR BED)
+                value: [0x40, 0x02, 0x70, 0x00, 0x01, 0x0B, 0x02, 0x40]
+            - delay: 300ms
+      - logger.log: "Head up stopped"
+    turn_off_action:
+      - globals.set:
+          id: head_moving
+          value: 'false'
+      # Send stop command
+      - switch.turn_on: bed_stop
+
+  # Head Down
+  - platform: template
+    name: "Bed Head Down"
+    id: bed_head_down
+    icon: mdi:arrow-down-bold
+    optimistic: true
+    turn_on_action:
+      - globals.set:
+          id: head_moving
+          value: 'true'
+      - while:
+          condition:
+            lambda: 'return id(head_moving);'
+          then:
+            - ble_client.ble_write:
+                id: bed_ble
+                service_uuid: "FFE0"
+                characteristic_uuid: "FFE1"
+                # Richmat head down (CHANGE FOR YOUR BED)
+                value: [0x40, 0x02, 0x70, 0x00, 0x02, 0x0B, 0x02, 0x40]
+            - delay: 300ms
+    turn_off_action:
+      - globals.set:
+          id: head_moving
+          value: 'false'
+      - switch.turn_on: bed_stop
+
+  # Foot Up
+  - platform: template
+    name: "Bed Foot Up"
+    id: bed_foot_up
+    icon: mdi:arrow-up
+    optimistic: true
+    turn_on_action:
+      - globals.set:
+          id: foot_moving
+          value: 'true'
+      - while:
+          condition:
+            lambda: 'return id(foot_moving);'
+          then:
+            - ble_client.ble_write:
+                id: bed_ble
+                service_uuid: "FFE0"
+                characteristic_uuid: "FFE1"
+                # Richmat foot up (CHANGE FOR YOUR BED)
+                value: [0x40, 0x02, 0x71, 0x00, 0x01, 0x0B, 0x02, 0x40]
+            - delay: 300ms
+    turn_off_action:
+      - globals.set:
+          id: foot_moving
+          value: 'false'
+      - switch.turn_on: bed_stop
+
+  # Foot Down
+  - platform: template
+    name: "Bed Foot Down"
+    id: bed_foot_down
+    icon: mdi:arrow-down
+    optimistic: true
+    turn_on_action:
+      - globals.set:
+          id: foot_moving
+          value: 'true'
+      - while:
+          condition:
+            lambda: 'return id(foot_moving);'
+          then:
+            - ble_client.ble_write:
+                id: bed_ble
+                service_uuid: "FFE0"
+                characteristic_uuid: "FFE1"
+                # Richmat foot down (CHANGE FOR YOUR BED)
+                value: [0x40, 0x02, 0x71, 0x00, 0x02, 0x0B, 0x02, 0x40]
+            - delay: 300ms
+    turn_off_action:
+      - globals.set:
+          id: foot_moving
+          value: 'false'
+      - switch.turn_on: bed_stop
+
+# Preset Positions (single command, no hold)
+button:
+  - platform: template
+    name: "Bed Flat Position"
+    icon: mdi:bed
+    on_press:
+      - ble_client.ble_write:
+          id: bed_ble
+          service_uuid: "FFE0"
+          characteristic_uuid: "FFE1"
+          # Richmat flat (CHANGE FOR YOUR BED)
+          value: [0x40, 0x02, 0x72, 0x00, 0x01, 0x0B, 0x02, 0x40]
+      - logger.log: "Flat position activated"
+
+  - platform: template
+    name: "Bed Zero-G Position"
+    icon: mdi:human-handsup
+    on_press:
+      - ble_client.ble_write:
+          id: bed_ble
+          service_uuid: "FFE0"
+          characteristic_uuid: "FFE1"
+          # Richmat Zero-G (CHANGE FOR YOUR BED)
+          value: [0x40, 0x02, 0x72, 0x00, 0x04, 0x0B, 0x02, 0x40]
+      - logger.log: "Zero-G position activated"
+
+  - platform: template
+    name: "Bed Anti-Snore Position"
+    icon: mdi:sleep
+    on_press:
+      - ble_client.ble_write:
+          id: bed_ble
+          service_uuid: "FFE0"
+          characteristic_uuid: "FFE1"
+          # Richmat anti-snore (CHANGE FOR YOUR BED)
+          value: [0x40, 0x02, 0x72, 0x00, 0x02, 0x0B, 0x02, 0x40]
+      - logger.log: "Anti-snore position activated"
+
+  # Under-bed light toggle (if equipped)
+  - platform: template
+    name: "Bed Light Toggle"
+    icon: mdi:lightbulb
+    on_press:
+      - ble_client.ble_write:
+          id: bed_ble
+          service_uuid: "FFE0"
+          characteristic_uuid: "FFE1"
+          # Richmat light (CHANGE FOR YOUR BED)
+          value: [0x40, 0x02, 0x74, 0x00, 0x01, 0x0B, 0x02, 0x40]
+      - logger.log: "Light toggled"
+
+  # ESP32 restart button
+  - platform: restart
+    name: "Restart Bed Controller"
+
+# Status sensors
+binary_sensor:
+  - platform: ble_presence
+    mac_address: "AA:BB:CC:DD:EE:FF"  # ⚠️ CHANGE THIS
+    name: "Bed BLE Connected"
+
+sensor:
+  - platform: uptime
+    name: "Bed Controller Uptime"
+  
+  - platform: wifi_signal
+    name: "Bed Controller WiFi"
+    update_interval: 60s
+
+text_sensor:
+  - platform: wifi_info
+    ip_address:
+      name: "Bed Controller IP"

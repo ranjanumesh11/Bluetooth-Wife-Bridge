@@ -1,0 +1,215 @@
+# Home Assistant Automations for Bed Control
+# Add these to your configuration.yaml or automations.yaml
+# These provide smart, automatic bed adjustments
+
+automation:
+  # Safety: Auto-stop if movement runs too long
+  - alias: "Bed Safety Auto-Stop"
+    description: "Stop bed movement after 30 seconds as failsafe"
+    trigger:
+      - platform: state
+        entity_id:
+          - switch.bed_head_up
+          - switch.bed_head_down
+          - switch.bed_foot_up
+          - switch.bed_foot_down
+        to: "on"
+        for:
+          seconds: 30
+    action:
+      - service: switch.turn_on
+        entity_id: switch.bed_emergency_stop
+      - service: notify.mobile_app  # Adjust to your notification service
+        data:
+          title: "⚠️ Bed Auto-Stop Triggered"
+          message: "Bed movement exceeded 30 seconds and was automatically stopped"
+          data:
+            priority: high
+    mode: restart
+
+  # Goodnight automation: Flatten bed at bedtime
+  - alias: "Bed Flatten at Bedtime"
+    description: "Automatically flatten bed at 10 PM"
+    trigger:
+      - platform: time
+        at: "22:00:00"
+    condition:
+      - condition: state
+        entity_id: input_boolean.bed_automation_enabled  # Create this helper
+        state: "on"
+    action:
+      - service: button.press
+        entity_id: button.bed_flat_position
+      - service: notify.mobile_app
+        data:
+          title: "Goodnight"
+          message: "Bed has been flattened for sleep"
+
+  # Wake up routine: Gentle head raise in morning
+  - alias: "Bed Gentle Wake Up"
+    description: "Slowly raise head at wake-up time"
+    trigger:
+      - platform: time
+        at: input_datetime.bed_wakeup_time  # Create this helper
+    condition:
+      - condition: state
+        entity_id: input_boolean.bed_wakeup_enabled
+        state: "on"
+      - condition: state
+        entity_id: binary_sensor.bed_ble_connected
+        state: "on"
+    action:
+      - service: script.turn_on
+        entity_id: script.bed_gentle_wakeup
+
+  # Anti-snore: If snoring detected, raise head slightly
+  - alias: "Bed Anti-Snore Auto-Adjust"
+    description: "Raise head when snoring is detected"
+    trigger:
+      - platform: state
+        entity_id: binary_sensor.bedroom_snoring_detected  # Requires smart mic/sensor
+        to: "on"
+        for:
+          minutes: 2
+    condition:
+      - condition: state
+        entity_id: input_boolean.bed_anti_snore_enabled
+        state: "on"
+      - condition: state
+        entity_id: binary_sensor.bed_ble_connected
+        state: "on"
+    action:
+      - service: button.press
+        entity_id: button.bed_anti_snore_position
+      - service: notify.mobile_app
+        data:
+          title: "Anti-Snore Activated"
+          message: "Bed head raised to help with snoring"
+
+  # Presence-based: Flatten when leaving bedroom
+  - alias: "Bed Flatten When Leaving"
+    description: "Flatten bed when both people leave bedroom"
+    trigger:
+      - platform: state
+        entity_id: binary_sensor.bedroom_occupancy  # Requires occupancy sensor
+        to: "off"
+        for:
+          minutes: 10
+    condition:
+      - condition: time
+        after: "06:00:00"
+        before: "22:00:00"
+      - condition: state
+        entity_id: input_boolean.bed_automation_enabled
+        state: "on"
+    action:
+      - service: button.press
+        entity_id: button.bed_flat_position
+
+  # Movie mode: TV position when streaming starts
+  - alias: "Bed TV Position When Streaming"
+    description: "Adjust to TV watching position when media plays"
+    trigger:
+      - platform: state
+        entity_id: media_player.bedroom_tv  # Your bedroom TV entity
+        to: "playing"
+    condition:
+      - condition: state
+        entity_id: input_boolean.bed_media_automation
+        state: "on"
+      - condition: time
+        after: "18:00:00"
+        before: "23:59:59"
+    action:
+      - service: script.turn_on
+        entity_id: script.bed_tv_position
+
+  # Connection alert: Notify if bed disconnects
+  - alias: "Bed Connection Lost Alert"
+    description: "Alert when bed loses BLE connection"
+    trigger:
+      - platform: state
+        entity_id: binary_sensor.bed_ble_connected
+        to: "off"
+        for:
+          minutes: 5
+    action:
+      - service: notify.mobile_app
+        data:
+          title: "⚠️ Bed Connection Lost"
+          message: "The bed controller is no longer connected. Check ESP32 power and WiFi."
+          data:
+            priority: low
+
+  # ESP32 restart automation if connection issues
+  - alias: "Auto-Restart Bed Controller"
+    description: "Restart ESP32 if disconnected for too long"
+    trigger:
+      - platform: state
+        entity_id: binary_sensor.bed_ble_connected
+        to: "off"
+        for:
+          minutes: 15
+    action:
+      - service: button.press
+        entity_id: button.restart_bed_controller
+      - delay:
+          minutes: 2
+      - service: notify.mobile_app
+        data:
+          title: "Bed Controller Restarted"
+          message: "Automatic restart attempted due to connection loss"
+
+  # Night light integration: Dim lights during bed movement at night
+  - alias: "Dim Lights During Night Bed Movement"
+    description: "Automatically dim bedroom lights during nighttime bed adjustments"
+    trigger:
+      - platform: state
+        entity_id:
+          - switch.bed_head_up
+          - switch.bed_head_down
+          - switch.bed_foot_up
+          - switch.bed_foot_down
+        to: "on"
+    condition:
+      - condition: time
+        after: "21:00:00"
+        before: "06:00:00"
+      - condition: state
+        entity_id: light.bedroom_lights
+        state: "on"
+    action:
+      - service: light.turn_on
+        entity_id: light.bedroom_lights
+        data:
+          brightness_pct: 10
+          transition: 2
+
+# Required Input Boolean Helpers
+# Add these to configuration.yaml or create via UI:
+# Settings → Devices & Services → Helpers → Create Helper → Toggle
+
+input_boolean:
+  bed_automation_enabled:
+    name: Enable Bed Automations
+    icon: mdi:robot
+
+  bed_wakeup_enabled:
+    name: Enable Wake-Up Routine
+    icon: mdi:weather-sunset-up
+
+  bed_anti_snore_enabled:
+    name: Enable Anti-Snore Auto-Adjust
+    icon: mdi:sleep
+
+  bed_media_automation:
+    name: Enable Media Position Auto-Adjust
+    icon: mdi:television
+
+# Required Input DateTime Helper for wake-up time
+input_datetime:
+  bed_wakeup_time:
+    name: Bed Wake-Up Time
+    has_date: false
+    has_time: true
+    initial: "07:00:00"

@@ -1,0 +1,246 @@
+# Lovelace Dashboard for Adjustable Bed Control
+# Paste this into a new Home Assistant dashboard
+# Settings → Dashboards → Add Dashboard → Edit Dashboard → Raw Configuration Editor
+
+title: Bed Control
+views:
+  - title: Bedroom
+    icon: mdi:bed
+    cards:
+      # Emergency Stop at the top - always visible
+      - type: button
+        entity: switch.bed_emergency_stop
+        name: 🛑 EMERGENCY STOP
+        icon: mdi:stop-circle-outline
+        tap_action:
+          action: toggle
+        hold_action:
+          action: none
+        show_state: false
+        card_mod:
+          style: |
+            ha-card {
+              background-color: #d32f2f;
+              color: white;
+              font-weight: bold;
+              font-size: 1.2em;
+            }
+
+      # Connection status
+      - type: entities
+        title: Status
+        entities:
+          - entity: binary_sensor.bed_ble_connected
+            name: Bed Connected
+          - entity: sensor.bed_controller_wifi
+            name: WiFi Signal
+          - entity: sensor.bed_controller_uptime
+            name: Uptime
+
+      # Main movement controls - large buttons
+      - type: vertical-stack
+        cards:
+          - type: markdown
+            content: |
+              ## Head Controls
+              **Hold** button for continuous movement
+          
+          - type: horizontal-stack
+            cards:
+              - type: button
+                entity: switch.bed_head_up
+                name: Head Up
+                icon: mdi:arrow-up-bold-circle
+                tap_action:
+                  action: toggle
+                hold_action:
+                  action: toggle
+                show_state: false
+                card_mod:
+                  style: |
+                    ha-card {
+                      height: 120px;
+                      font-size: 1.3em;
+                    }
+              
+              - type: button
+                entity: switch.bed_head_down
+                name: Head Down
+                icon: mdi:arrow-down-bold-circle
+                tap_action:
+                  action: toggle
+                hold_action:
+                  action: toggle
+                show_state: false
+                card_mod:
+                  style: |
+                    ha-card {
+                      height: 120px;
+                      font-size: 1.3em;
+                    }
+
+      - type: vertical-stack
+        cards:
+          - type: markdown
+            content: |
+              ## Foot Controls
+              **Hold** button for continuous movement
+          
+          - type: horizontal-stack
+            cards:
+              - type: button
+                entity: switch.bed_foot_up
+                name: Foot Up
+                icon: mdi:arrow-up-circle
+                tap_action:
+                  action: toggle
+                hold_action:
+                  action: toggle
+                show_state: false
+                card_mod:
+                  style: |
+                    ha-card {
+                      height: 120px;
+                      font-size: 1.3em;
+                    }
+              
+              - type: button
+                entity: switch.bed_foot_down
+                name: Foot Down
+                icon: mdi:arrow-down-circle
+                tap_action:
+                  action: toggle
+                hold_action:
+                  action: toggle
+                show_state: false
+                card_mod:
+                  style: |
+                    ha-card {
+                      height: 120px;
+                      font-size: 1.3em;
+                    }
+
+      # Preset positions - single tap
+      - type: vertical-stack
+        cards:
+          - type: markdown
+            content: |
+              ## Quick Positions
+              **Tap** for instant preset positions
+          
+          - type: horizontal-stack
+            cards:
+              - type: button
+                entity: button.bed_flat_position
+                name: Flat
+                icon: mdi:bed
+                tap_action:
+                  action: call-service
+                  service: button.press
+                  service_data:
+                    entity_id: button.bed_flat_position
+                show_state: false
+                card_mod:
+                  style: |
+                    ha-card {
+                      height: 100px;
+                      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                      color: white;
+                    }
+              
+              - type: button
+                entity: button.bed_zero_g_position
+                name: Zero-G
+                icon: mdi:human-handsup
+                tap_action:
+                  action: call-service
+                  service: button.press
+                  service_data:
+                    entity_id: button.bed_zero_g_position
+                show_state: false
+                card_mod:
+                  style: |
+                    ha-card {
+                      height: 100px;
+                      background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+                      color: white;
+                    }
+          
+          - type: horizontal-stack
+            cards:
+              - type: button
+                entity: button.bed_anti_snore_position
+                name: Anti-Snore
+                icon: mdi:sleep
+                tap_action:
+                  action: call-service
+                  service: button.press
+                  service_data:
+                    entity_id: button.bed_anti_snore_position
+                show_state: false
+                card_mod:
+                  style: |
+                    ha-card {
+                      height: 100px;
+                      background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+                      color: white;
+                    }
+              
+              - type: button
+                entity: button.bed_light_toggle
+                name: Light
+                icon: mdi:lightbulb-outline
+                tap_action:
+                  action: call-service
+                  service: button.press
+                  service_data:
+                    entity_id: button.bed_light_toggle
+                show_state: false
+                card_mod:
+                  style: |
+                    ha-card {
+                      height: 100px;
+                      background: linear-gradient(135deg, #fa709a 0%, #fee140 100%);
+                      color: white;
+                    }
+
+      # Saved custom positions (using input_select helper)
+      - type: vertical-stack
+        cards:
+          - type: markdown
+            content: |
+              ## My Saved Positions
+              Save and recall your favorite bed positions
+          
+          - type: entities
+            entities:
+              - entity: input_select.bed_saved_positions
+                name: Saved Positions
+              - entity: script.bed_save_current_position
+                name: Save Current
+                icon: mdi:content-save
+              - entity: script.bed_load_position
+                name: Load Selected
+                icon: mdi:upload
+
+      # Safety reminder
+      - type: markdown
+        content: |
+          ---
+          ### ⚠️ Safety Reminder
+          - Physical remote always works
+          - Auto-stop after 30 seconds
+          - **Emergency stop** at top
+          - Keep bed clear during movement
+
+      # Advanced controls (collapsed by default)
+      - type: entities
+        title: Advanced
+        show_header_toggle: false
+        state_color: true
+        entities:
+          - entity: button.restart_bed_controller
+            name: Restart Controller
+            icon: mdi:restart
+          - entity: sensor.bed_controller_ip
+            name: IP Address

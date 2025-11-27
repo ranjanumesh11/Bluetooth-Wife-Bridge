@@ -1,0 +1,212 @@
+# Home Assistant Scripts for Bed Control
+# Add these to your configuration.yaml or scripts.yaml
+# These create reusable bed position presets
+
+script:
+  # Timed movement with auto-stop (safer than infinite loops)
+  bed_head_up_timed:
+    alias: "Bed Head Up (Timed)"
+    sequence:
+      - service: switch.turn_on
+        entity_id: switch.bed_head_up
+      - delay:
+          seconds: 5  # Adjust duration as needed
+      - service: switch.turn_off
+        entity_id: switch.bed_head_up
+      - service: switch.turn_on
+        entity_id: switch.bed_emergency_stop
+    mode: restart  # Restart if called again while running
+
+  bed_head_down_timed:
+    alias: "Bed Head Down (Timed)"
+    sequence:
+      - service: switch.turn_on
+        entity_id: switch.bed_head_down
+      - delay:
+          seconds: 5
+      - service: switch.turn_off
+        entity_id: switch.bed_head_down
+      - service: switch.turn_on
+        entity_id: switch.bed_emergency_stop
+    mode: restart
+
+  bed_foot_up_timed:
+    alias: "Bed Foot Up (Timed)"
+    sequence:
+      - service: switch.turn_on
+        entity_id: switch.bed_foot_up
+      - delay:
+          seconds: 5
+      - service: switch.turn_off
+        entity_id: switch.bed_foot_up
+      - service: switch.turn_on
+        entity_id: switch.bed_emergency_stop
+    mode: restart
+
+  bed_foot_down_timed:
+    alias: "Bed Foot Down (Timed)"
+    sequence:
+      - service: switch.turn_on
+        entity_id: switch.bed_foot_down
+      - delay:
+          seconds: 5
+      - service: switch.turn_off
+        entity_id: switch.bed_foot_down
+      - service: switch.turn_on
+        entity_id: switch.bed_emergency_stop
+    mode: restart
+
+  # Custom position: Reading position (head up 30°, foot flat)
+  bed_reading_position:
+    alias: "Bed Reading Position"
+    sequence:
+      # First flatten
+      - service: button.press
+        entity_id: button.bed_flat_position
+      - delay:
+          seconds: 2
+      # Then raise head
+      - service: switch.turn_on
+        entity_id: switch.bed_head_up
+      - delay:
+          seconds: 3  # Adjust for desired angle
+      - service: switch.turn_off
+        entity_id: switch.bed_head_up
+      - service: switch.turn_on
+        entity_id: switch.bed_emergency_stop
+    mode: restart
+
+  # Custom position: TV watching (head & foot slightly elevated)
+  bed_tv_position:
+    alias: "Bed TV Position"
+    sequence:
+      - service: button.press
+        entity_id: button.bed_flat_position
+      - delay:
+          seconds: 2
+      - service: switch.turn_on
+        entity_id: switch.bed_head_up
+      - delay:
+          seconds: 4
+      - service: switch.turn_off
+        entity_id: switch.bed_head_up
+      - delay:
+          milliseconds: 500
+      - service: switch.turn_on
+        entity_id: switch.bed_foot_up
+      - delay:
+          seconds: 2
+      - service: switch.turn_off
+        entity_id: switch.bed_foot_up
+      - service: switch.turn_on
+        entity_id: switch.bed_emergency_stop
+    mode: restart
+
+  # Save current position (requires input_number helpers)
+  bed_save_current_position:
+    alias: "Save Current Bed Position"
+    sequence:
+      - service: notify.mobile_app  # Adjust notification service
+        data:
+          title: "Bed Position Saved"
+          message: "Current bed position has been saved to slot {{ states('input_select.bed_saved_positions') }}"
+      # In practice, you'd need sensors to read actual position
+      # This is a placeholder for your custom implementation
+
+  # Load saved position
+  bed_load_position:
+    alias: "Load Saved Bed Position"
+    sequence:
+      - choose:
+          - conditions:
+              - condition: state
+                entity_id: input_select.bed_saved_positions
+                state: "Reading"
+            sequence:
+              - service: script.turn_on
+                entity_id: script.bed_reading_position
+          - conditions:
+              - condition: state
+                entity_id: input_select.bed_saved_positions
+                state: "TV Watching"
+            sequence:
+              - service: script.turn_on
+                entity_id: script.bed_tv_position
+          - conditions:
+              - condition: state
+                entity_id: input_select.bed_saved_positions
+                state: "Zero-G"
+            sequence:
+              - service: button.press
+                entity_id: button.bed_zero_g_position
+          - conditions:
+              - condition: state
+                entity_id: input_select.bed_saved_positions
+                state: "Flat"
+            sequence:
+              - service: button.press
+                entity_id: button.bed_flat_position
+    mode: restart
+
+  # Gentle wake-up (slowly raise head over 30 seconds)
+  bed_gentle_wakeup:
+    alias: "Bed Gentle Wake Up"
+    sequence:
+      - repeat:
+          count: 6  # 6 movements × 1.5 sec each = 9 sec total
+          sequence:
+            - service: switch.turn_on
+              entity_id: switch.bed_head_up
+            - delay:
+                milliseconds: 1500
+            - service: switch.turn_off
+              entity_id: switch.bed_head_up
+            - delay:
+                seconds: 3  # Pause between movements
+      - service: switch.turn_on
+        entity_id: switch.bed_emergency_stop
+    mode: restart
+
+  # Goodnight routine (turn off lights, flatten bed)
+  bed_goodnight_routine:
+    alias: "Bed Goodnight Routine"
+    sequence:
+      - service: button.press
+        entity_id: button.bed_light_toggle
+      - delay:
+          milliseconds: 500
+      - service: button.press
+        entity_id: button.bed_flat_position
+    mode: restart
+
+# Input helpers for saved positions
+input_select:
+  bed_saved_positions:
+    name: Bed Saved Positions
+    options:
+      - "Flat"
+      - "Zero-G"
+      - "Reading"
+      - "TV Watching"
+      - "Custom 1"
+      - "Custom 2"
+    initial: "Flat"
+    icon: mdi:bookmark-multiple
+
+# Optional: Input numbers to store exact position angles
+input_number:
+  bed_saved_head_angle:
+    name: Saved Head Angle
+    min: 0
+    max: 60
+    step: 1
+    unit_of_measurement: "°"
+    icon: mdi:angle-acute
+
+  bed_saved_foot_angle:
+    name: Saved Foot Angle
+    min: 0
+    max: 45
+    step: 1
+    unit_of_measurement: "°"
+    icon: mdi:angle-acute

@@ -1,0 +1,84 @@
+# ESPHome Bluetooth Proxy Configuration
+# Simple BLE proxy for Home Assistant - no custom commands needed
+# This makes the ESP32 act as a BLE scanner/relay for Home Assistant
+
+esphome:
+  name: bed-ble-proxy
+  friendly_name: Bed Bluetooth Proxy
+
+esp32:
+  board: esp32dev
+  framework:
+    type: esp-idf  # Recommended for Bluetooth Proxy - better stability & memory
+
+# Enable logging
+logger:
+  level: INFO
+
+# Enable Home Assistant API
+api:
+  encryption:
+    key: !secret api_encryption_key
+
+# Enable OTA updates
+ota:
+  - platform: esphome
+    password: !secret ota_password
+
+# WiFi configuration
+wifi:
+  ssid: !secret wifi_ssid
+  password: !secret wifi_password
+  
+  # Enable fallback hotspot (captive portal) in case wifi connection fails
+  ap:
+    ssid: "Bed-Proxy Fallback"
+    password: !secret fallback_password
+
+# Captive portal for easy WiFi setup
+captive_portal:
+
+# Web server (optional - for debugging)
+web_server:
+  port: 80
+
+# Bluetooth LE Tracker - scans for BLE devices
+esp32_ble_tracker:
+  scan_parameters:
+    # Active scanning for better device discovery
+    active: true
+    # Scan interval and window (milliseconds)
+    interval: 1100ms
+    window: 1100ms
+    duration: 5min
+
+# Bluetooth Proxy - forwards BLE to Home Assistant
+bluetooth_proxy:
+  # Allow 3 simultaneous connections (ESP32 limit)
+  active: true
+  
+# Restart button (useful for troubleshooting)
+button:
+  - platform: restart
+    name: "Restart Bed BLE Proxy"
+
+# Uptime sensor
+sensor:
+  - platform: uptime
+    name: "Bed Proxy Uptime"
+    update_interval: 60s
+
+# WiFi signal strength
+  - platform: wifi_signal
+    name: "Bed Proxy WiFi Signal"
+    update_interval: 60s
+
+# Text sensor for WiFi info
+text_sensor:
+  - platform: wifi_info
+    ip_address:
+      name: "Bed Proxy IP Address"
+    ssid:
+      name: "Bed Proxy SSID"
+    mac_address:
+      name: "Bed Proxy MAC Address"
