@@ -1,0 +1,227 @@
+# =============================================================================
+# Home Assistant Package — Sven & Son Platinum Adjustable Bed
+# =============================================================================
+# Drop this file into your HA `packages/` folder and add to configuration.yaml:
+#
+#   homeassistant:
+#     packages: !include_dir_named packages
+#
+# Then restart Home Assistant. All bed entities will appear automatically.
+# Entity IDs follow the pattern: switch.head_up, switch.foot_down, etc.
+# =============================================================================
+
+# ---------------------------------------------------------------------------
+# Input buttons — these appear as "Press" buttons in the HA dashboard.
+# They call the underlying ESPHome switch momentarily.
+# ---------------------------------------------------------------------------
+input_button:
+  bed_head_up:
+    name: "Head Up"
+    icon: mdi:arrow-up-bold-box
+
+  bed_head_down:
+    name: "Head Down"
+    icon: mdi:arrow-down-bold-box
+
+  bed_foot_up:
+    name: "Foot Up"
+    icon: mdi:arrow-up-bold-box
+
+  bed_foot_down:
+    name: "Foot Down"
+    icon: mdi:arrow-down-bold-box
+
+  bed_lumbar_up:
+    name: "Lumbar Up"
+    icon: mdi:human
+
+  bed_lumbar_down:
+    name: "Lumbar Down"
+    icon: mdi:human
+
+  bed_preset_flat:
+    name: "Preset: Flat"
+    icon: mdi:bed-outline
+
+  bed_preset_zerog:
+    name: "Preset: Zero-G"
+    icon: mdi:alpha-z-circle
+
+  bed_preset_tv:
+    name: "Preset: TV / Lounge"
+    icon: mdi:television-play
+
+# ---------------------------------------------------------------------------
+# Input select — convenience selector for presets
+# ---------------------------------------------------------------------------
+input_select:
+  bed_preset:
+    name: "Bed Preset"
+    options:
+      - "None"
+      - "Flat"
+      - "Zero-G"
+      - "TV / Lounge"
+    initial: "None"
+    icon: mdi:bed
+
+# ---------------------------------------------------------------------------
+# Scripts — wire input_button presses to ESPHome switch calls
+# Update entity IDs to match your ESPHome device name if you changed it.
+# ---------------------------------------------------------------------------
+script:
+  bed_head_up:
+    alias: "Bed: Head Up"
+    sequence:
+      - service: switch.turn_on
+        target:
+          entity_id: switch.sven_son_bed_bridge_head_up
+
+  bed_head_down:
+    alias: "Bed: Head Down"
+    sequence:
+      - service: switch.turn_on
+        target:
+          entity_id: switch.sven_son_bed_bridge_head_down
+
+  bed_foot_up:
+    alias: "Bed: Foot Up"
+    sequence:
+      - service: switch.turn_on
+        target:
+          entity_id: switch.sven_son_bed_bridge_foot_up
+
+  bed_foot_down:
+    alias: "Bed: Foot Down"
+    sequence:
+      - service: switch.turn_on
+        target:
+          entity_id: switch.sven_son_bed_bridge_foot_down
+
+  bed_lumbar_up:
+    alias: "Bed: Lumbar Up"
+    sequence:
+      - service: switch.turn_on
+        target:
+          entity_id: switch.sven_son_bed_bridge_lumbar_up
+
+  bed_lumbar_down:
+    alias: "Bed: Lumbar Down"
+    sequence:
+      - service: switch.turn_on
+        target:
+          entity_id: switch.sven_son_bed_bridge_lumbar_down
+
+  bed_preset_flat:
+    alias: "Bed: Preset Flat"
+    sequence:
+      - service: switch.turn_on
+        target:
+          entity_id: switch.sven_son_bed_bridge_preset_flat
+      - service: input_select.select_option
+        target:
+          entity_id: input_select.bed_preset
+        data:
+          option: "Flat"
+
+  bed_preset_zerog:
+    alias: "Bed: Preset Zero-G"
+    sequence:
+      - service: switch.turn_on
+        target:
+          entity_id: switch.sven_son_bed_bridge_preset_zero_g
+      - service: input_select.select_option
+        target:
+          entity_id: input_select.bed_preset
+        data:
+          option: "Zero-G"
+
+  bed_preset_tv:
+    alias: "Bed: Preset TV/Lounge"
+    sequence:
+      - service: switch.turn_on
+        target:
+          entity_id: switch.sven_son_bed_bridge_preset_tv_lounge
+      - service: input_select.select_option
+        target:
+          entity_id: input_select.bed_preset
+        data:
+          option: "TV / Lounge"
+
+# ---------------------------------------------------------------------------
+# Automations — triggered by input_button presses and input_select changes
+# ---------------------------------------------------------------------------
+automation:
+  - id: bed_input_button_head_up
+    alias: "Bed: Input Button → Head Up"
+    trigger:
+      platform: state
+      entity_id: input_button.bed_head_up
+    action:
+      service: script.bed_head_up
+
+  - id: bed_input_button_head_down
+    alias: "Bed: Input Button → Head Down"
+    trigger:
+      platform: state
+      entity_id: input_button.bed_head_down
+    action:
+      service: script.bed_head_down
+
+  - id: bed_input_button_foot_up
+    alias: "Bed: Input Button → Foot Up"
+    trigger:
+      platform: state
+      entity_id: input_button.bed_foot_up
+    action:
+      service: script.bed_foot_up
+
+  - id: bed_input_button_foot_down
+    alias: "Bed: Input Button → Foot Down"
+    trigger:
+      platform: state
+      entity_id: input_button.bed_foot_down
+    action:
+      service: script.bed_foot_down
+
+  - id: bed_input_button_lumbar_up
+    alias: "Bed: Input Button → Lumbar Up"
+    trigger:
+      platform: state
+      entity_id: input_button.bed_lumbar_up
+    action:
+      service: script.bed_lumbar_up
+
+  - id: bed_input_button_lumbar_down
+    alias: "Bed: Input Button → Lumbar Down"
+    trigger:
+      platform: state
+      entity_id: input_button.bed_lumbar_down
+    action:
+      service: script.bed_lumbar_down
+
+  - id: bed_preset_select_changed
+    alias: "Bed: Preset Selector Changed"
+    trigger:
+      platform: state
+      entity_id: input_select.bed_preset
+    action:
+      choose:
+        - conditions:
+            - condition: state
+              entity_id: input_select.bed_preset
+              state: "Flat"
+          sequence:
+            service: script.bed_preset_flat
+        - conditions:
+            - condition: state
+              entity_id: input_select.bed_preset
+              state: "Zero-G"
+          sequence:
+            service: script.bed_preset_zerog
+        - conditions:
+            - condition: state
+              entity_id: input_select.bed_preset
+              state: "TV / Lounge"
+          sequence:
+            service: script.bed_preset_tv

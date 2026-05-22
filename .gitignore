@@ -1,0 +1,27 @@
+# ESPHome secrets — NEVER commit
+esphome/secrets.yaml
+**/secrets.yaml
+
+# ESPHome build artifacts
+esphome/.esphome/
+**/.esphome/
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+venv/
+
+# OS junk
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Editor
+.vscode/
+*.swp
+*.swo
+
+# Home Assistant local overrides
+home-assistant/configuration_local.yaml

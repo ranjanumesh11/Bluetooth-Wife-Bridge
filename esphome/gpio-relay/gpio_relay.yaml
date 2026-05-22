@@ -1,0 +1,277 @@
+# =============================================================================
+# Sven & Son Platinum — ESPHome GPIO Relay (Optocoupler) Bridge
+# =============================================================================
+# Approach 2: Hardware fallback. Each GPIO pin drives a PC817 optocoupler that
+# shunts the corresponding button contact on the disassembled remote PCB.
+# No BLE reverse-engineering required — this physically "presses" each button.
+#
+# WIRING SUMMARY (full details in hardware/schematic/SCHEMATIC.md):
+#   ESP32 GPIO → 470Ω → PC817 LED anode (pin 1)
+#   PC817 LED cathode (pin 2) → GND (ESP32 ground)
+#   PC817 collector (pin 4) → remote button contact A
+#   PC817 emitter  (pin 3) → remote button contact B (common)
+#
+# GPIO PIN ASSIGNMENTS (adjust to match your actual wiring):
+#   GPIO 4  → Head Up
+#   GPIO 5  → Head Down
+#   GPIO 18 → Foot Up
+#   GPIO 19 → Foot Down
+#   GPIO 21 → Lumbar Up
+#   GPIO 22 → Lumbar Down
+#   GPIO 23 → Preset: Flat
+#   GPIO 25 → Preset: Zero-G
+#   GPIO 26 → Preset: TV/Lounge
+#   GPIO 27 → Massage Head toggle
+#   GPIO 32 → Massage Foot toggle
+#   GPIO 33 → Under-bed Light toggle
+#
+# HOW TO USE:
+#   1. Wire optocouplers per hardware/schematic/SCHEMATIC.md
+#   2. Copy this file to ESPHome config directory
+#   3. Create/update secrets.yaml from secrets.yaml.template
+#   4. Run: esphome run gpio_relay.yaml
+# =============================================================================
+
+substitutions:
+  device_name: "sven-son-bed-gpio"
+  friendly_name: "Sven & Son Bed GPIO Bridge"
+
+  # Momentary press duration — 200 ms mimics a real button tap.
+  # Increase to 500ms for presets if the bed controller requires longer hold.
+  press_duration: "200ms"
+
+  # GPIO pin assignments — change these to match your physical wiring
+  pin_head_up:      "4"
+  pin_head_down:    "5"
+  pin_foot_up:      "18"
+  pin_foot_down:    "19"
+  pin_lumbar_up:    "21"
+  pin_lumbar_down:  "22"
+  pin_preset_flat:  "23"
+  pin_preset_zerog: "25"
+  pin_preset_tv:    "26"
+  pin_massage_head: "27"
+  pin_massage_foot: "32"
+  pin_lights:       "33"
+
+# ---------------------------------------------------------------------------
+# Core config
+# ---------------------------------------------------------------------------
+esphome:
+  name: ${device_name}
+  friendly_name: ${friendly_name}
+  comment: "GPIO optocoupler relay bridge for Sven & Son adjustable base"
+
+esp32:
+  board: esp32dev
+  framework:
+    type: arduino
+
+wifi:
+  ssid: !secret wifi_ssid
+  password: !secret wifi_password
+  manual_ip:
+    static_ip: 192.168.1.121    # Change to suit your network
+    gateway: 192.168.1.1
+    subnet: 255.255.255.0
+    dns1: 192.168.1.1
+  power_save_mode: none
+  reboot_timeout: 60s
+  ap:
+    ssid: "${device_name}-AP"
+    password: !secret ap_fallback_password
+
+captive_portal:
+
+api:
+  encryption:
+    key: !secret api_encryption_key
+
+ota:
+  password: !secret ota_password
+
+logger:
+  level: INFO
+
+# ---------------------------------------------------------------------------
+# Switch entities — each triggers a GPIO momentary pulse
+# The GPIO goes HIGH for `press_duration` then returns LOW.
+# The optocoupler closes the remote button contact during this window.
+# ---------------------------------------------------------------------------
+switch:
+  # ── Head ────────────────────────────────────────────────────────────────
+  - platform: gpio
+    pin:
+      number: ${pin_head_up}
+      mode: OUTPUT
+      inverted: false   # PC817 is active-HIGH: GPIO HIGH = LED on = contact closed
+    id: relay_head_up
+    name: "Head Up"
+    icon: mdi:arrow-up-bold-box
+    restore_mode: ALWAYS_OFF   # Ensure pin is LOW at boot — never hold relay closed
+    on_turn_on:
+      - delay: ${press_duration}
+      - switch.turn_off: relay_head_up
+
+  - platform: gpio
+    pin:
+      number: ${pin_head_down}
+      mode: OUTPUT
+    id: relay_head_down
+    name: "Head Down"
+    icon: mdi:arrow-down-bold-box
+    restore_mode: ALWAYS_OFF
+    on_turn_on:
+      - delay: ${press_duration}
+      - switch.turn_off: relay_head_down
+
+  # ── Foot ────────────────────────────────────────────────────────────────
+  - platform: gpio
+    pin:
+      number: ${pin_foot_up}
+      mode: OUTPUT
+    id: relay_foot_up
+    name: "Foot Up"
+    icon: mdi:arrow-up-bold-box
+    restore_mode: ALWAYS_OFF
+    on_turn_on:
+      - delay: ${press_duration}
+      - switch.turn_off: relay_foot_up
+
+  - platform: gpio
+    pin:
+      number: ${pin_foot_down}
+      mode: OUTPUT
+    id: relay_foot_down
+    name: "Foot Down"
+    icon: mdi:arrow-down-bold-box
+    restore_mode: ALWAYS_OFF
+    on_turn_on:
+      - delay: ${press_duration}
+      - switch.turn_off: relay_foot_down
+
+  # ── Lumbar ──────────────────────────────────────────────────────────────
+  - platform: gpio
+    pin:
+      number: ${pin_lumbar_up}
+      mode: OUTPUT
+    id: relay_lumbar_up
+    name: "Lumbar Up"
+    icon: mdi:human
+    restore_mode: ALWAYS_OFF
+    on_turn_on:
+      - delay: ${press_duration}
+      - switch.turn_off: relay_lumbar_up
+
+  - platform: gpio
+    pin:
+      number: ${pin_lumbar_down}
+      mode: OUTPUT
+    id: relay_lumbar_down
+    name: "Lumbar Down"
+    icon: mdi:human
+    restore_mode: ALWAYS_OFF
+    on_turn_on:
+      - delay: ${press_duration}
+      - switch.turn_off: relay_lumbar_down
+
+  # ── Presets ─────────────────────────────────────────────────────────────
+  - platform: gpio
+    pin:
+      number: ${pin_preset_flat}
+      mode: OUTPUT
+    id: relay_preset_flat
+    name: "Preset: Flat"
+    icon: mdi:bed-outline
+    restore_mode: ALWAYS_OFF
+    on_turn_on:
+      - delay: ${press_duration}
+      - switch.turn_off: relay_preset_flat
+
+  - platform: gpio
+    pin:
+      number: ${pin_preset_zerog}
+      mode: OUTPUT
+    id: relay_preset_zerog
+    name: "Preset: Zero-G"
+    icon: mdi:alpha-z-circle
+    restore_mode: ALWAYS_OFF
+    on_turn_on:
+      - delay: ${press_duration}
+      - switch.turn_off: relay_preset_zerog
+
+  - platform: gpio
+    pin:
+      number: ${pin_preset_tv}
+      mode: OUTPUT
+    id: relay_preset_tv
+    name: "Preset: TV/Lounge"
+    icon: mdi:television-play
+    restore_mode: ALWAYS_OFF
+    on_turn_on:
+      - delay: ${press_duration}
+      - switch.turn_off: relay_preset_tv
+
+  # ── Massage (toggle — stays on until pressed again) ─────────────────────
+  - platform: gpio
+    pin:
+      number: ${pin_massage_head}
+      mode: OUTPUT
+    id: relay_massage_head
+    name: "Massage: Head Toggle"
+    icon: mdi:vibrate
+    restore_mode: ALWAYS_OFF
+    on_turn_on:
+      - delay: ${press_duration}
+      - switch.turn_off: relay_massage_head
+
+  - platform: gpio
+    pin:
+      number: ${pin_massage_foot}
+      mode: OUTPUT
+    id: relay_massage_foot
+    name: "Massage: Foot Toggle"
+    icon: mdi:vibrate
+    restore_mode: ALWAYS_OFF
+    on_turn_on:
+      - delay: ${press_duration}
+      - switch.turn_off: relay_massage_foot
+
+  # ── Under-bed Light (toggle) ─────────────────────────────────────────────
+  - platform: gpio
+    pin:
+      number: ${pin_lights}
+      mode: OUTPUT
+    id: relay_lights
+    name: "Under-Bed Light Toggle"
+    icon: mdi:lightbulb-outline
+    restore_mode: ALWAYS_OFF
+    on_turn_on:
+      - delay: ${press_duration}
+      - switch.turn_off: relay_lights
+
+# ---------------------------------------------------------------------------
+# Diagnostic sensors
+# ---------------------------------------------------------------------------
+sensor:
+  - platform: wifi_signal
+    name: "Bridge Wi-Fi Signal"
+    update_interval: 60s
+    unit_of_measurement: dBm
+
+  - platform: uptime
+    name: "Bridge Uptime"
+    update_interval: 60s
+
+binary_sensor:
+  - platform: status
+    name: "Bridge Status"
+
+text_sensor:
+  - platform: wifi_info
+    ip_address:
+      name: "Bridge IP Address"
+    ssid:
+      name: "Bridge SSID"
+    mac_address:
+      name: "Bridge MAC"

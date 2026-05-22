@@ -1,0 +1,96 @@
+# =============================================================================
+# Example Bed Automations
+# =============================================================================
+# These are starter automations. Import via HA UI or merge into automations.yaml.
+# Adjust times and conditions to match your routine.
+# =============================================================================
+
+# Morning routine: Raise head 30 minutes before wake time
+- id: bed_morning_raise_head
+  alias: "Bed: Morning — Raise Head"
+  description: "Gradually raise head section 30 min before alarm"
+  trigger:
+    - platform: time
+      at: "06:30:00"
+  condition:
+    - condition: time
+      weekday:
+        - mon
+        - tue
+        - wed
+        - thu
+        - fri
+  action:
+    - service: switch.turn_on
+      target:
+        entity_id: switch.sven_son_bed_bridge_head_up
+    - delay: "00:00:02"
+    - service: switch.turn_on
+      target:
+        entity_id: switch.sven_son_bed_bridge_head_up
+    - delay: "00:00:02"
+    - service: switch.turn_on
+      target:
+        entity_id: switch.sven_son_bed_bridge_head_up
+  mode: single
+
+# Bedtime routine: Flat position + lights off when going to sleep
+- id: bed_bedtime_flat
+  alias: "Bed: Bedtime — Go Flat"
+  description: "Flatten bed and turn off under-bed light at bedtime"
+  trigger:
+    - platform: time
+      at: "22:30:00"
+  action:
+    - service: switch.turn_on
+      target:
+        entity_id: switch.sven_son_bed_bridge_preset_flat
+    # Small delay to let preset complete before turning off lights
+    - delay: "00:00:05"
+    - service: switch.turn_off
+      target:
+        entity_id: switch.sven_son_bed_bridge_under_bed_light
+  mode: single
+
+# Movie night: TV preset when Plex starts playing
+- id: bed_movie_preset
+  alias: "Bed: TV Preset when Media Plays"
+  description: "Switch to TV/Lounge preset when a media player starts"
+  trigger:
+    - platform: state
+      entity_id: media_player.living_room_tv   # Change to your media player
+      to: "playing"
+  condition:
+    - condition: time
+      after: "18:00:00"
+      before: "23:59:59"
+  action:
+    - service: switch.turn_on
+      target:
+        entity_id: switch.sven_son_bed_bridge_preset_tv_lounge
+  mode: single
+
+# Under-bed nightlight: Turn on when motion detected at night
+- id: bed_nightlight_motion
+  alias: "Bed: Nightlight on Motion"
+  description: "Turn on under-bed light for 5 minutes when motion detected at night"
+  trigger:
+    - platform: state
+      entity_id: binary_sensor.bedroom_motion   # Change to your motion sensor
+      to: "on"
+  condition:
+    - condition: time
+      after: "22:00:00"
+      before: "06:00:00"
+    - condition: state
+      entity_id: switch.sven_son_bed_bridge_under_bed_light
+      state: "off"
+  action:
+    - service: switch.turn_on
+      target:
+        entity_id: switch.sven_son_bed_bridge_under_bed_light
+    - delay: "00:05:00"
+    - service: switch.turn_off
+      target:
+        entity_id: switch.sven_son_bed_bridge_under_bed_light
+  mode: single
