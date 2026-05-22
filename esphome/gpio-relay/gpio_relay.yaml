@@ -5,30 +5,47 @@
 # shunts the corresponding button contact on the disassembled remote PCB.
 # No BLE reverse-engineering required — this physically "presses" each button.
 #
-# WIRING SUMMARY (full details in hardware/schematic/SCHEMATIC.md):
-#   ESP32 GPIO → 470Ω → PC817 LED anode (pin 1)
-#   PC817 LED cathode (pin 2) → GND (ESP32 ground)
-#   PC817 collector (pin 4) → remote button contact A
-#   PC817 emitter  (pin 3) → remote button contact B (common)
+# REMOTE MODEL: Richmat HJH89 (FCC ID: 2AJJGHJC0)
+# ALL 18 BUTTONS MAPPED:
 #
-# GPIO PIN ASSIGNMENTS (adjust to match your actual wiring):
-#   GPIO 4  → Head Up
-#   GPIO 5  → Head Down
-#   GPIO 18 → Foot Up
-#   GPIO 19 → Foot Down
-#   GPIO 21 → Lumbar Up
-#   GPIO 22 → Lumbar Down
-#   GPIO 23 → Preset: Flat
-#   GPIO 25 → Preset: Zero-G
-#   GPIO 26 → Preset: TV/Lounge
-#   GPIO 27 → Massage Head toggle
-#   GPIO 32 → Massage Foot toggle
-#   GPIO 33 → Under-bed Light toggle
+#   GPIO  4  → Head Up
+#   GPIO  5  → Head Down
+#   GPIO 13  → Head Tilt Up      (small pillow tilt, up to 7°)
+#   GPIO 14  → Head Tilt Down
+#   GPIO 16  → Foot Up
+#   GPIO 17  → Foot Down
+#   GPIO 18  → Lumbar Up
+#   GPIO 19  → Lumbar Down
+#   GPIO 21  → Preset: Flat      (one-touch flat — center big button)
+#   GPIO 22  → Preset: Zero-G
+#   GPIO 23  → Preset: Anti-Snore
+#   GPIO 25  → Memory Position   (save/recall stored position)
+#   GPIO 26  → Massage ON/OFF    (master massage toggle)
+#   GPIO 27  → Massage Mode      (cycle wave / pulse / combo)
+#   GPIO 32  → Massage: Head zone
+#   GPIO 33  → Massage: Foot zone
+#   GPIO  2  → Under-Bed Light   (GPIO2 is safe as output after boot)
+#   GPIO 15  → Flashlight        (GPIO15 is safe as output after boot)
+#
+# ⚠️  GPIO BOOT NOTES:
+#   GPIO 2  — Strapping pin; LOW at boot (optocoupler inactive = safe). ✅
+#   GPIO 12 — Avoid: affects flash voltage at boot.                     ❌
+#   GPIO 15 — Strapping pin; must be HIGH at boot for normal operation,
+#              but is freely usable as OUTPUT once booted. ✅ (add 10kΩ
+#              pull-down if your board lacks one — most dev boards have it.)
+#   GPIO 34–39 — Input-only on ESP32; cannot drive output.              ❌
+#   GPIO 6–11  — Connected to internal flash; never use.                ❌
+#
+# WIRING (full schematic in hardware/schematic/SCHEMATIC.md):
+#   ESP32 GPIO → 470Ω resistor → PC817 LED anode  (pin 1)
+#   PC817 cathode (pin 2) → ESP32 GND
+#   PC817 collector (pin 4) → remote button pad A
+#   PC817 emitter   (pin 3) → remote button pad B (common/GND of remote)
 #
 # HOW TO USE:
-#   1. Wire optocouplers per hardware/schematic/SCHEMATIC.md
-#   2. Copy this file to ESPHome config directory
-#   3. Create/update secrets.yaml from secrets.yaml.template
+#   1. Wire 18 optocoupler channels per hardware/schematic/SCHEMATIC.md
+#   2. Copy this file into ESPHome config directory
+#   3. Fill in secrets.yaml (see secrets.yaml.template)
 #   4. Run: esphome run gpio_relay.yaml
 # =============================================================================
 
@@ -36,23 +53,30 @@ substitutions:
   device_name: "sven-son-bed-gpio"
   friendly_name: "Sven & Son Bed GPIO Bridge"
 
-  # Momentary press duration — 200 ms mimics a real button tap.
-  # Increase to 500ms for presets if the bed controller requires longer hold.
+  # Momentary press duration (ms).
+  # 200 ms mimics a real button tap for position buttons.
+  # Presets may need 500 ms if the bed controller requires a longer hold.
   press_duration: "200ms"
 
-  # GPIO pin assignments — change these to match your physical wiring
-  pin_head_up:      "4"
-  pin_head_down:    "5"
-  pin_foot_up:      "18"
-  pin_foot_down:    "19"
-  pin_lumbar_up:    "21"
-  pin_lumbar_down:  "22"
-  pin_preset_flat:  "23"
-  pin_preset_zerog: "25"
-  pin_preset_tv:    "26"
-  pin_massage_head: "27"
-  pin_massage_foot: "32"
-  pin_lights:       "33"
+  # ── GPIO pin assignments — change to match your actual wiring ────────────
+  pin_head_up:        "4"
+  pin_head_down:      "5"
+  pin_head_tilt_up:   "13"
+  pin_head_tilt_down: "14"
+  pin_foot_up:        "16"
+  pin_foot_down:      "17"
+  pin_lumbar_up:      "18"
+  pin_lumbar_down:    "19"
+  pin_preset_flat:    "21"
+  pin_preset_zerog:   "22"
+  pin_anti_snore:     "23"
+  pin_memory:         "25"
+  pin_massage_onoff:  "26"
+  pin_massage_mode:   "27"
+  pin_massage_head:   "32"
+  pin_massage_foot:   "33"
+  pin_lights:         "2"
+  pin_flashlight:     "15"
 
 # ---------------------------------------------------------------------------
 # Core config
@@ -60,7 +84,7 @@ substitutions:
 esphome:
   name: ${device_name}
   friendly_name: ${friendly_name}
-  comment: "GPIO optocoupler relay bridge for Sven & Son adjustable base"
+  comment: "GPIO optocoupler relay bridge for Sven & Son Platinum (Richmat HJH89)"
 
 esp32:
   board: esp32dev
@@ -71,7 +95,7 @@ wifi:
   ssid: !secret wifi_ssid
   password: !secret wifi_password
   manual_ip:
-    static_ip: 192.168.1.121    # Change to suit your network
+    static_ip: 192.168.1.121    # ← Change to suit your network
     gateway: 192.168.1.1
     subnet: 255.255.255.0
     dns1: 192.168.1.1
@@ -94,29 +118,27 @@ logger:
   level: INFO
 
 # ---------------------------------------------------------------------------
-# Switch entities — each triggers a GPIO momentary pulse
-# The GPIO goes HIGH for `press_duration` then returns LOW.
-# The optocoupler closes the remote button contact during this window.
+# SWITCH ENTITIES — all 18 remote buttons as GPIO momentary pulses
+# GPIO goes HIGH for `press_duration` → optocoupler closes → button pressed.
+# restore_mode: ALWAYS_OFF ensures no pin is HIGH on boot/power-cycle.
 # ---------------------------------------------------------------------------
 switch:
-  # ── Head ────────────────────────────────────────────────────────────────
+
+  # ════════════════════════════════════════════════════════════════════════
+  # HEAD position  (main articulation, up to 75°)
+  # ════════════════════════════════════════════════════════════════════════
   - platform: gpio
-    pin:
-      number: ${pin_head_up}
-      mode: OUTPUT
-      inverted: false   # PC817 is active-HIGH: GPIO HIGH = LED on = contact closed
+    pin: { number: ${pin_head_up}, mode: OUTPUT, inverted: false }
     id: relay_head_up
     name: "Head Up"
     icon: mdi:arrow-up-bold-box
-    restore_mode: ALWAYS_OFF   # Ensure pin is LOW at boot — never hold relay closed
+    restore_mode: ALWAYS_OFF
     on_turn_on:
       - delay: ${press_duration}
       - switch.turn_off: relay_head_up
 
   - platform: gpio
-    pin:
-      number: ${pin_head_down}
-      mode: OUTPUT
+    pin: { number: ${pin_head_down}, mode: OUTPUT }
     id: relay_head_down
     name: "Head Down"
     icon: mdi:arrow-down-bold-box
@@ -125,11 +147,34 @@ switch:
       - delay: ${press_duration}
       - switch.turn_off: relay_head_down
 
-  # ── Foot ────────────────────────────────────────────────────────────────
+  # ════════════════════════════════════════════════════════════════════════
+  # HEAD TILT  (small pillow tilt, up to 7° — top-row buttons on remote)
+  # ════════════════════════════════════════════════════════════════════════
   - platform: gpio
-    pin:
-      number: ${pin_foot_up}
-      mode: OUTPUT
+    pin: { number: ${pin_head_tilt_up}, mode: OUTPUT }
+    id: relay_head_tilt_up
+    name: "Head Tilt Up"
+    icon: mdi:head-plus
+    restore_mode: ALWAYS_OFF
+    on_turn_on:
+      - delay: ${press_duration}
+      - switch.turn_off: relay_head_tilt_up
+
+  - platform: gpio
+    pin: { number: ${pin_head_tilt_down}, mode: OUTPUT }
+    id: relay_head_tilt_down
+    name: "Head Tilt Down"
+    icon: mdi:head-minus
+    restore_mode: ALWAYS_OFF
+    on_turn_on:
+      - delay: ${press_duration}
+      - switch.turn_off: relay_head_tilt_down
+
+  # ════════════════════════════════════════════════════════════════════════
+  # FOOT position  (up to 45°)
+  # ════════════════════════════════════════════════════════════════════════
+  - platform: gpio
+    pin: { number: ${pin_foot_up}, mode: OUTPUT }
     id: relay_foot_up
     name: "Foot Up"
     icon: mdi:arrow-up-bold-box
@@ -139,9 +184,7 @@ switch:
       - switch.turn_off: relay_foot_up
 
   - platform: gpio
-    pin:
-      number: ${pin_foot_down}
-      mode: OUTPUT
+    pin: { number: ${pin_foot_down}, mode: OUTPUT }
     id: relay_foot_down
     name: "Foot Down"
     icon: mdi:arrow-down-bold-box
@@ -150,11 +193,11 @@ switch:
       - delay: ${press_duration}
       - switch.turn_off: relay_foot_down
 
-  # ── Lumbar ──────────────────────────────────────────────────────────────
+  # ════════════════════════════════════════════════════════════════════════
+  # LUMBAR  (adjustable bar, up to 4")
+  # ════════════════════════════════════════════════════════════════════════
   - platform: gpio
-    pin:
-      number: ${pin_lumbar_up}
-      mode: OUTPUT
+    pin: { number: ${pin_lumbar_up}, mode: OUTPUT }
     id: relay_lumbar_up
     name: "Lumbar Up"
     icon: mdi:human
@@ -164,9 +207,7 @@ switch:
       - switch.turn_off: relay_lumbar_up
 
   - platform: gpio
-    pin:
-      number: ${pin_lumbar_down}
-      mode: OUTPUT
+    pin: { number: ${pin_lumbar_down}, mode: OUTPUT }
     id: relay_lumbar_down
     name: "Lumbar Down"
     icon: mdi:human
@@ -175,11 +216,11 @@ switch:
       - delay: ${press_duration}
       - switch.turn_off: relay_lumbar_down
 
-  # ── Presets ─────────────────────────────────────────────────────────────
+  # ════════════════════════════════════════════════════════════════════════
+  # PRESETS
+  # ════════════════════════════════════════════════════════════════════════
   - platform: gpio
-    pin:
-      number: ${pin_preset_flat}
-      mode: OUTPUT
+    pin: { number: ${pin_preset_flat}, mode: OUTPUT }
     id: relay_preset_flat
     name: "Preset: Flat"
     icon: mdi:bed-outline
@@ -189,9 +230,7 @@ switch:
       - switch.turn_off: relay_preset_flat
 
   - platform: gpio
-    pin:
-      number: ${pin_preset_zerog}
-      mode: OUTPUT
+    pin: { number: ${pin_preset_zerog}, mode: OUTPUT }
     id: relay_preset_zerog
     name: "Preset: Zero-G"
     icon: mdi:alpha-z-circle
@@ -201,24 +240,52 @@ switch:
       - switch.turn_off: relay_preset_zerog
 
   - platform: gpio
-    pin:
-      number: ${pin_preset_tv}
-      mode: OUTPUT
-    id: relay_preset_tv
-    name: "Preset: TV/Lounge"
-    icon: mdi:television-play
+    pin: { number: ${pin_anti_snore}, mode: OUTPUT }
+    id: relay_anti_snore
+    name: "Preset: Anti-Snore"
+    icon: mdi:sleep-off
     restore_mode: ALWAYS_OFF
     on_turn_on:
       - delay: ${press_duration}
-      - switch.turn_off: relay_preset_tv
+      - switch.turn_off: relay_anti_snore
 
-  # ── Massage (toggle — stays on until pressed again) ─────────────────────
   - platform: gpio
-    pin:
-      number: ${pin_massage_head}
-      mode: OUTPUT
+    pin: { number: ${pin_memory}, mode: OUTPUT }
+    id: relay_memory
+    name: "Memory Position"
+    icon: mdi:content-save-outline
+    restore_mode: ALWAYS_OFF
+    on_turn_on:
+      - delay: ${press_duration}
+      - switch.turn_off: relay_memory
+
+  # ════════════════════════════════════════════════════════════════════════
+  # MASSAGE  (3 modes: wave / pulse / combo)
+  # ════════════════════════════════════════════════════════════════════════
+  - platform: gpio
+    pin: { number: ${pin_massage_onoff}, mode: OUTPUT }
+    id: relay_massage_onoff
+    name: "Massage ON/OFF"
+    icon: mdi:power
+    restore_mode: ALWAYS_OFF
+    on_turn_on:
+      - delay: ${press_duration}
+      - switch.turn_off: relay_massage_onoff
+
+  - platform: gpio
+    pin: { number: ${pin_massage_mode}, mode: OUTPUT }
+    id: relay_massage_mode
+    name: "Massage Mode"
+    icon: mdi:swap-horizontal-circle-outline
+    restore_mode: ALWAYS_OFF
+    on_turn_on:
+      - delay: ${press_duration}
+      - switch.turn_off: relay_massage_mode
+
+  - platform: gpio
+    pin: { number: ${pin_massage_head}, mode: OUTPUT }
     id: relay_massage_head
-    name: "Massage: Head Toggle"
+    name: "Massage: Head"
     icon: mdi:vibrate
     restore_mode: ALWAYS_OFF
     on_turn_on:
@@ -226,22 +293,20 @@ switch:
       - switch.turn_off: relay_massage_head
 
   - platform: gpio
-    pin:
-      number: ${pin_massage_foot}
-      mode: OUTPUT
+    pin: { number: ${pin_massage_foot}, mode: OUTPUT }
     id: relay_massage_foot
-    name: "Massage: Foot Toggle"
+    name: "Massage: Foot"
     icon: mdi:vibrate
     restore_mode: ALWAYS_OFF
     on_turn_on:
       - delay: ${press_duration}
       - switch.turn_off: relay_massage_foot
 
-  # ── Under-bed Light (toggle) ─────────────────────────────────────────────
+  # ════════════════════════════════════════════════════════════════════════
+  # ACCESSORIES
+  # ════════════════════════════════════════════════════════════════════════
   - platform: gpio
-    pin:
-      number: ${pin_lights}
-      mode: OUTPUT
+    pin: { number: ${pin_lights}, mode: OUTPUT }
     id: relay_lights
     name: "Under-Bed Light Toggle"
     icon: mdi:lightbulb-outline
@@ -249,6 +314,16 @@ switch:
     on_turn_on:
       - delay: ${press_duration}
       - switch.turn_off: relay_lights
+
+  - platform: gpio
+    pin: { number: ${pin_flashlight}, mode: OUTPUT }
+    id: relay_flashlight
+    name: "Flashlight"
+    icon: mdi:flashlight
+    restore_mode: ALWAYS_OFF
+    on_turn_on:
+      - delay: ${press_duration}
+      - switch.turn_off: relay_flashlight
 
 # ---------------------------------------------------------------------------
 # Diagnostic sensors

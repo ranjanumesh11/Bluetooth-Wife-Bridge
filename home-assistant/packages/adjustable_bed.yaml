@@ -6,15 +6,21 @@
 #   homeassistant:
 #     packages: !include_dir_named packages
 #
-# Then restart Home Assistant. All bed entities will appear automatically.
-# Entity IDs follow the pattern: switch.head_up, switch.foot_down, etc.
+# Then restart Home Assistant. All 18 bed entities will appear automatically.
+#
+# Remote model: Richmat HJH89 (FCC ID: 2AJJGHJC0)
+# Entity IDs follow the pattern:  switch.<device_name>_<button_name>
+# e.g.  switch.sven_son_bed_bridge_head_up   (BLE approach)
+#       switch.sven_son_bed_gpio_head_up      (GPIO approach)
 # =============================================================================
 
 # ---------------------------------------------------------------------------
-# Input buttons — these appear as "Press" buttons in the HA dashboard.
-# They call the underlying ESPHome switch momentarily.
+# Input buttons — these appear as pressable "Button" cards in the HA dashboard.
+# Each calls the underlying ESPHome switch momentarily.
 # ---------------------------------------------------------------------------
 input_button:
+
+  # ── Head position ──────────────────────────────────────────────────────
   bed_head_up:
     name: "Head Up"
     icon: mdi:arrow-up-bold-box
@@ -23,6 +29,16 @@ input_button:
     name: "Head Down"
     icon: mdi:arrow-down-bold-box
 
+  # ── Head Tilt (small pillow tilt, up to 7°) ────────────────────────────
+  bed_head_tilt_up:
+    name: "Head Tilt Up"
+    icon: mdi:head-plus
+
+  bed_head_tilt_down:
+    name: "Head Tilt Down"
+    icon: mdi:head-minus
+
+  # ── Foot position ──────────────────────────────────────────────────────
   bed_foot_up:
     name: "Foot Up"
     icon: mdi:arrow-up-bold-box
@@ -31,6 +47,7 @@ input_button:
     name: "Foot Down"
     icon: mdi:arrow-down-bold-box
 
+  # ── Lumbar (up to 4") ──────────────────────────────────────────────────
   bed_lumbar_up:
     name: "Lumbar Up"
     icon: mdi:human
@@ -39,6 +56,7 @@ input_button:
     name: "Lumbar Down"
     icon: mdi:human
 
+  # ── Presets ────────────────────────────────────────────────────────────
   bed_preset_flat:
     name: "Preset: Flat"
     icon: mdi:bed-outline
@@ -47,181 +65,286 @@ input_button:
     name: "Preset: Zero-G"
     icon: mdi:alpha-z-circle
 
-  bed_preset_tv:
-    name: "Preset: TV / Lounge"
-    icon: mdi:television-play
+  bed_preset_anti_snore:
+    name: "Preset: Anti-Snore"
+    icon: mdi:sleep-off
+
+  bed_memory:
+    name: "Memory Position"
+    icon: mdi:content-save-outline
+
+  # ── Massage ────────────────────────────────────────────────────────────
+  bed_massage_onoff:
+    name: "Massage ON/OFF"
+    icon: mdi:power
+
+  bed_massage_mode:
+    name: "Massage Mode"
+    icon: mdi:swap-horizontal-circle-outline
+
+  bed_massage_head:
+    name: "Massage: Head"
+    icon: mdi:vibrate
+
+  bed_massage_foot:
+    name: "Massage: Foot"
+    icon: mdi:vibrate
+
+  # ── Accessories ────────────────────────────────────────────────────────
+  bed_lights:
+    name: "Under-Bed Light"
+    icon: mdi:lightbulb-outline
+
+  bed_flashlight:
+    name: "Flashlight"
+    icon: mdi:flashlight
 
 # ---------------------------------------------------------------------------
-# Input select — convenience selector for presets
+# Input select — quick preset switcher (shows in HA dashboard as a dropdown)
 # ---------------------------------------------------------------------------
 input_select:
   bed_preset:
     name: "Bed Preset"
     options:
-      - "None"
       - "Flat"
       - "Zero-G"
-      - "TV / Lounge"
-    initial: "None"
-    icon: mdi:bed
+      - "Anti-Snore"
+      - "Memory"
+    initial: "Flat"
+    icon: mdi:bed-outline
 
 # ---------------------------------------------------------------------------
-# Scripts — wire input_button presses to ESPHome switch calls
-# Update entity IDs to match your ESPHome device name if you changed it.
-# ---------------------------------------------------------------------------
-script:
-  bed_head_up:
-    alias: "Bed: Head Up"
-    sequence:
-      - service: switch.turn_on
-        target:
-          entity_id: switch.sven_son_bed_bridge_head_up
-
-  bed_head_down:
-    alias: "Bed: Head Down"
-    sequence:
-      - service: switch.turn_on
-        target:
-          entity_id: switch.sven_son_bed_bridge_head_down
-
-  bed_foot_up:
-    alias: "Bed: Foot Up"
-    sequence:
-      - service: switch.turn_on
-        target:
-          entity_id: switch.sven_son_bed_bridge_foot_up
-
-  bed_foot_down:
-    alias: "Bed: Foot Down"
-    sequence:
-      - service: switch.turn_on
-        target:
-          entity_id: switch.sven_son_bed_bridge_foot_down
-
-  bed_lumbar_up:
-    alias: "Bed: Lumbar Up"
-    sequence:
-      - service: switch.turn_on
-        target:
-          entity_id: switch.sven_son_bed_bridge_lumbar_up
-
-  bed_lumbar_down:
-    alias: "Bed: Lumbar Down"
-    sequence:
-      - service: switch.turn_on
-        target:
-          entity_id: switch.sven_son_bed_bridge_lumbar_down
-
-  bed_preset_flat:
-    alias: "Bed: Preset Flat"
-    sequence:
-      - service: switch.turn_on
-        target:
-          entity_id: switch.sven_son_bed_bridge_preset_flat
-      - service: input_select.select_option
-        target:
-          entity_id: input_select.bed_preset
-        data:
-          option: "Flat"
-
-  bed_preset_zerog:
-    alias: "Bed: Preset Zero-G"
-    sequence:
-      - service: switch.turn_on
-        target:
-          entity_id: switch.sven_son_bed_bridge_preset_zero_g
-      - service: input_select.select_option
-        target:
-          entity_id: input_select.bed_preset
-        data:
-          option: "Zero-G"
-
-  bed_preset_tv:
-    alias: "Bed: Preset TV/Lounge"
-    sequence:
-      - service: switch.turn_on
-        target:
-          entity_id: switch.sven_son_bed_bridge_preset_tv_lounge
-      - service: input_select.select_option
-        target:
-          entity_id: input_select.bed_preset
-        data:
-          option: "TV / Lounge"
-
-# ---------------------------------------------------------------------------
-# Automations — triggered by input_button presses and input_select changes
+# Automations — wire input_button presses to ESPHome switch calls
+# Change the entity_id prefix to match your ESPHome device name:
+#   BLE approach : switch.sven_son_bed_bridge_*
+#   GPIO approach: switch.sven_son_bed_gpio_*
 # ---------------------------------------------------------------------------
 automation:
-  - id: bed_input_button_head_up
-    alias: "Bed: Input Button → Head Up"
+
+  # ── Head ──────────────────────────────────────────────────────────────
+  - id: bed_btn_head_up
+    alias: "Bed Button: Head Up"
     trigger:
       platform: state
       entity_id: input_button.bed_head_up
     action:
-      service: script.bed_head_up
+      service: switch.turn_on
+      target:
+        entity_id: switch.sven_son_bed_bridge_head_up
 
-  - id: bed_input_button_head_down
-    alias: "Bed: Input Button → Head Down"
+  - id: bed_btn_head_down
+    alias: "Bed Button: Head Down"
     trigger:
       platform: state
       entity_id: input_button.bed_head_down
     action:
-      service: script.bed_head_down
+      service: switch.turn_on
+      target:
+        entity_id: switch.sven_son_bed_bridge_head_down
 
-  - id: bed_input_button_foot_up
-    alias: "Bed: Input Button → Foot Up"
+  # ── Head Tilt ──────────────────────────────────────────────────────────
+  - id: bed_btn_head_tilt_up
+    alias: "Bed Button: Head Tilt Up"
+    trigger:
+      platform: state
+      entity_id: input_button.bed_head_tilt_up
+    action:
+      service: switch.turn_on
+      target:
+        entity_id: switch.sven_son_bed_bridge_head_tilt_up
+
+  - id: bed_btn_head_tilt_down
+    alias: "Bed Button: Head Tilt Down"
+    trigger:
+      platform: state
+      entity_id: input_button.bed_head_tilt_down
+    action:
+      service: switch.turn_on
+      target:
+        entity_id: switch.sven_son_bed_bridge_head_tilt_down
+
+  # ── Foot ──────────────────────────────────────────────────────────────
+  - id: bed_btn_foot_up
+    alias: "Bed Button: Foot Up"
     trigger:
       platform: state
       entity_id: input_button.bed_foot_up
     action:
-      service: script.bed_foot_up
+      service: switch.turn_on
+      target:
+        entity_id: switch.sven_son_bed_bridge_foot_up
 
-  - id: bed_input_button_foot_down
-    alias: "Bed: Input Button → Foot Down"
+  - id: bed_btn_foot_down
+    alias: "Bed Button: Foot Down"
     trigger:
       platform: state
       entity_id: input_button.bed_foot_down
     action:
-      service: script.bed_foot_down
+      service: switch.turn_on
+      target:
+        entity_id: switch.sven_son_bed_bridge_foot_down
 
-  - id: bed_input_button_lumbar_up
-    alias: "Bed: Input Button → Lumbar Up"
+  # ── Lumbar ────────────────────────────────────────────────────────────
+  - id: bed_btn_lumbar_up
+    alias: "Bed Button: Lumbar Up"
     trigger:
       platform: state
       entity_id: input_button.bed_lumbar_up
     action:
-      service: script.bed_lumbar_up
+      service: switch.turn_on
+      target:
+        entity_id: switch.sven_son_bed_bridge_lumbar_up
 
-  - id: bed_input_button_lumbar_down
-    alias: "Bed: Input Button → Lumbar Down"
+  - id: bed_btn_lumbar_down
+    alias: "Bed Button: Lumbar Down"
     trigger:
       platform: state
       entity_id: input_button.bed_lumbar_down
     action:
-      service: script.bed_lumbar_down
+      service: switch.turn_on
+      target:
+        entity_id: switch.sven_son_bed_bridge_lumbar_down
 
-  - id: bed_preset_select_changed
-    alias: "Bed: Preset Selector Changed"
+  # ── Presets ───────────────────────────────────────────────────────────
+  - id: bed_btn_preset_flat
+    alias: "Bed Button: Preset Flat"
+    trigger:
+      platform: state
+      entity_id: input_button.bed_preset_flat
+    action:
+      service: switch.turn_on
+      target:
+        entity_id: switch.sven_son_bed_bridge_preset_flat
+
+  - id: bed_btn_preset_zerog
+    alias: "Bed Button: Preset Zero-G"
+    trigger:
+      platform: state
+      entity_id: input_button.bed_preset_zerog
+    action:
+      service: switch.turn_on
+      target:
+        entity_id: switch.sven_son_bed_bridge_preset_zero_g
+
+  - id: bed_btn_anti_snore
+    alias: "Bed Button: Anti-Snore"
+    trigger:
+      platform: state
+      entity_id: input_button.bed_preset_anti_snore
+    action:
+      service: switch.turn_on
+      target:
+        entity_id: switch.sven_son_bed_bridge_preset_anti_snore
+
+  - id: bed_btn_memory
+    alias: "Bed Button: Memory"
+    trigger:
+      platform: state
+      entity_id: input_button.bed_memory
+    action:
+      service: switch.turn_on
+      target:
+        entity_id: switch.sven_son_bed_bridge_memory_position
+
+  # ── Preset select dropdown ────────────────────────────────────────────
+  - id: bed_preset_select
+    alias: "Bed: Preset Dropdown"
     trigger:
       platform: state
       entity_id: input_select.bed_preset
     action:
       choose:
         - conditions:
-            - condition: state
-              entity_id: input_select.bed_preset
-              state: "Flat"
+            condition: state
+            entity_id: input_select.bed_preset
+            state: "Flat"
           sequence:
-            service: script.bed_preset_flat
+            service: switch.turn_on
+            target:
+              entity_id: switch.sven_son_bed_bridge_preset_flat
         - conditions:
-            - condition: state
-              entity_id: input_select.bed_preset
-              state: "Zero-G"
+            condition: state
+            entity_id: input_select.bed_preset
+            state: "Zero-G"
           sequence:
-            service: script.bed_preset_zerog
+            service: switch.turn_on
+            target:
+              entity_id: switch.sven_son_bed_bridge_preset_zero_g
         - conditions:
-            - condition: state
-              entity_id: input_select.bed_preset
-              state: "TV / Lounge"
+            condition: state
+            entity_id: input_select.bed_preset
+            state: "Anti-Snore"
           sequence:
-            service: script.bed_preset_tv
+            service: switch.turn_on
+            target:
+              entity_id: switch.sven_son_bed_bridge_preset_anti_snore
+        - conditions:
+            condition: state
+            entity_id: input_select.bed_preset
+            state: "Memory"
+          sequence:
+            service: switch.turn_on
+            target:
+              entity_id: switch.sven_son_bed_bridge_memory_position
+
+  # ── Massage ───────────────────────────────────────────────────────────
+  - id: bed_btn_massage_onoff
+    alias: "Bed Button: Massage ON/OFF"
+    trigger:
+      platform: state
+      entity_id: input_button.bed_massage_onoff
+    action:
+      service: switch.turn_on
+      target:
+        entity_id: switch.sven_son_bed_bridge_massage_on_off
+
+  - id: bed_btn_massage_mode
+    alias: "Bed Button: Massage Mode"
+    trigger:
+      platform: state
+      entity_id: input_button.bed_massage_mode
+    action:
+      service: switch.turn_on
+      target:
+        entity_id: switch.sven_son_bed_bridge_massage_mode
+
+  - id: bed_btn_massage_head
+    alias: "Bed Button: Massage Head"
+    trigger:
+      platform: state
+      entity_id: input_button.bed_massage_head
+    action:
+      service: switch.turn_on
+      target:
+        entity_id: switch.sven_son_bed_bridge_massage_head
+
+  - id: bed_btn_massage_foot
+    alias: "Bed Button: Massage Foot"
+    trigger:
+      platform: state
+      entity_id: input_button.bed_massage_foot
+    action:
+      service: switch.turn_on
+      target:
+        entity_id: switch.sven_son_bed_bridge_massage_foot
+
+  # ── Accessories ───────────────────────────────────────────────────────
+  - id: bed_btn_lights
+    alias: "Bed Button: Under-Bed Light"
+    trigger:
+      platform: state
+      entity_id: input_button.bed_lights
+    action:
+      service: switch.turn_on
+      target:
+        entity_id: switch.sven_son_bed_bridge_under_bed_light
+
+  - id: bed_btn_flashlight
+    alias: "Bed Button: Flashlight"
+    trigger:
+      platform: state
+      entity_id: input_button.bed_flashlight
+    action:
+      service: switch.turn_on
+      target:
+        entity_id: switch.sven_son_bed_bridge_flashlight
