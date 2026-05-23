@@ -1,0 +1,317 @@
+# =============================================================================
+# Home Assistant Lovelace Dashboard — Sven & Son Platinum Bed Remote
+# =============================================================================
+# This dashboard mirrors the exact button layout of the Richmat HJH89 remote.
+#
+# HOW TO ADD THIS TO HOME ASSISTANT:
+#   1. In HA, go to Settings → Dashboards → Add Dashboard → "New dashboard"
+#      Name: "Bed Remote"  Icon: mdi:bed  Mode: YAML
+#   2. Click the 3-dot menu → "Edit" → paste the content of this file
+#   OR:
+#   1. In HA go to any existing dashboard → Edit → Raw Config Editor
+#   2. Add the view below under the existing "views:" list
+#
+# ENTITY PREFIX:
+#   BLE Approach (Approach 1): switch.sven_son_bed_bridge_*   ← default below
+#   GPIO Approach (Approach 2): change prefix to switch.sven_son_bed_gpio_*
+#
+# LAYOUT (matches physical remote top-to-bottom):
+#   Row 1 : [Zero-G]       [Flashlight]    [Anti-Snore]
+#   Row 2 : [Head Tilt ▲]  [Lumbar ▲]      [Memory]
+#   Row 3 : [Head Tilt ▼]  [Lumbar ▼]      [Under-Bed Light]
+#   ─────────────────────────────────────────────────────────
+#   Row 4 : [Head ▲]       [  FLAT  ]      [Foot ▲]
+#   Row 5 : [Head ▼]       [        ]      [Foot ▼]
+#   ─────────────────────────────────────────────────────────
+#   Row 6 : [Head Massage] [Mode]          [Foot Massage]
+#   Row 7 : [            ] [Massage ON/OFF] [            ]
+# =============================================================================
+
+title: Bed Remote
+views:
+  - title: Bed Remote
+    icon: mdi:bed
+    path: bed-remote
+    badges: []
+    cards:
+
+      # ──────────────────────────────────────────────────────────────────
+      # SECTION HEADER — Presets & Accessories
+      # ──────────────────────────────────────────────────────────────────
+      - type: markdown
+        content: "### ⚙️ Presets & Accessories"
+
+      # Row 1 — Zero-G | Flashlight | Anti-Snore
+      - type: grid
+        columns: 3
+        square: true
+        cards:
+          - type: button
+            name: "Zero-G"
+            icon: mdi:alpha-z-circle
+            tap_action:
+              action: call-service
+              service: input_button.press
+              target:
+                entity_id: input_button.bed_preset_zerog
+            hold_action:
+              action: none
+            entity: input_button.bed_preset_zerog
+
+          - type: button
+            name: "Flashlight"
+            icon: mdi:flashlight
+            tap_action:
+              action: call-service
+              service: input_button.press
+              target:
+                entity_id: input_button.bed_flashlight
+            entity: input_button.bed_flashlight
+
+          - type: button
+            name: "Anti-Snore"
+            icon: mdi:sleep-off
+            tap_action:
+              action: call-service
+              service: input_button.press
+              target:
+                entity_id: input_button.bed_preset_anti_snore
+            entity: input_button.bed_preset_anti_snore
+
+      # ──────────────────────────────────────────────────────────────────
+      # SECTION HEADER — Head Tilt, Lumbar, Memory
+      # ──────────────────────────────────────────────────────────────────
+      - type: markdown
+        content: "### 🔧 Tilt · Lumbar · Memory"
+
+      # Rows 2–3 — Head Tilt & Lumbar (pairs) + Memory & Light
+      - type: grid
+        columns: 3
+        square: true
+        cards:
+          # Head Tilt Up
+          - type: button
+            name: "Head Tilt ▲"
+            icon: mdi:head-plus
+            tap_action:
+              action: call-service
+              service: input_button.press
+              target:
+                entity_id: input_button.bed_head_tilt_up
+            entity: input_button.bed_head_tilt_up
+
+          # Lumbar Up
+          - type: button
+            name: "Lumbar ▲"
+            icon: mdi:human
+            tap_action:
+              action: call-service
+              service: input_button.press
+              target:
+                entity_id: input_button.bed_lumbar_up
+            entity: input_button.bed_lumbar_up
+
+          # Memory
+          - type: button
+            name: "Memory"
+            icon: mdi:content-save-outline
+            tap_action:
+              action: call-service
+              service: input_button.press
+              target:
+                entity_id: input_button.bed_memory
+            entity: input_button.bed_memory
+
+          # Head Tilt Down
+          - type: button
+            name: "Head Tilt ▼"
+            icon: mdi:head-minus
+            tap_action:
+              action: call-service
+              service: input_button.press
+              target:
+                entity_id: input_button.bed_head_tilt_down
+            entity: input_button.bed_head_tilt_down
+
+          # Lumbar Down
+          - type: button
+            name: "Lumbar ▼"
+            icon: mdi:human
+            tap_action:
+              action: call-service
+              service: input_button.press
+              target:
+                entity_id: input_button.bed_lumbar_down
+            entity: input_button.bed_lumbar_down
+
+          # Under-Bed Light
+          - type: button
+            name: "Bed Light"
+            icon: mdi:lightbulb-outline
+            tap_action:
+              action: call-service
+              service: input_button.press
+              target:
+                entity_id: input_button.bed_lights
+            entity: input_button.bed_lights
+
+      # ──────────────────────────────────────────────────────────────────
+      # SECTION HEADER — Main Position Controls
+      # ──────────────────────────────────────────────────────────────────
+      - type: markdown
+        content: "### 🛏️ Head · Foot · Flat"
+
+      # Rows 4–5 — Head/Foot Up/Down + FLAT center
+      - type: grid
+        columns: 3
+        square: false
+        cards:
+          # Head Up
+          - type: button
+            name: "Head ▲"
+            icon: mdi:arrow-up-bold-box
+            tap_action:
+              action: call-service
+              service: input_button.press
+              target:
+                entity_id: input_button.bed_head_up
+            entity: input_button.bed_head_up
+
+          # FLAT — center big button, spans visually with extra height via custom style
+          - type: button
+            name: "FLAT"
+            icon: mdi:bed-outline
+            tap_action:
+              action: call-service
+              service: input_button.press
+              target:
+                entity_id: input_button.bed_preset_flat
+            entity: input_button.bed_preset_flat
+            card_mod:
+              style: |
+                ha-card {
+                  background: var(--primary-color);
+                  color: white;
+                  font-size: 1.2em;
+                  font-weight: bold;
+                  min-height: 80px;
+                }
+
+          # Foot Up
+          - type: button
+            name: "Foot ▲"
+            icon: mdi:arrow-up-bold-box
+            tap_action:
+              action: call-service
+              service: input_button.press
+              target:
+                entity_id: input_button.bed_foot_up
+            entity: input_button.bed_foot_up
+
+          # Head Down
+          - type: button
+            name: "Head ▼"
+            icon: mdi:arrow-down-bold-box
+            tap_action:
+              action: call-service
+              service: input_button.press
+              target:
+                entity_id: input_button.bed_head_down
+            entity: input_button.bed_head_down
+
+          # Empty center (below FLAT)
+          - type: markdown
+            content: " "
+
+          # Foot Down
+          - type: button
+            name: "Foot ▼"
+            icon: mdi:arrow-down-bold-box
+            tap_action:
+              action: call-service
+              service: input_button.press
+              target:
+                entity_id: input_button.bed_foot_down
+            entity: input_button.bed_foot_down
+
+      # ──────────────────────────────────────────────────────────────────
+      # SECTION HEADER — Massage
+      # ──────────────────────────────────────────────────────────────────
+      - type: markdown
+        content: "### 〰️ Massage"
+
+      # Rows 6–7 — Massage controls
+      - type: grid
+        columns: 3
+        square: true
+        cards:
+          # Head Massage
+          - type: button
+            name: "Head )))  "
+            icon: mdi:vibrate
+            tap_action:
+              action: call-service
+              service: input_button.press
+              target:
+                entity_id: input_button.bed_massage_head
+            entity: input_button.bed_massage_head
+
+          # Massage Mode cycle
+          - type: button
+            name: "Mode"
+            icon: mdi:swap-horizontal-circle-outline
+            tap_action:
+              action: call-service
+              service: input_button.press
+              target:
+                entity_id: input_button.bed_massage_mode
+            entity: input_button.bed_massage_mode
+
+          # Foot Massage
+          - type: button
+            name: "  ((( Foot"
+            icon: mdi:vibrate
+            tap_action:
+              action: call-service
+              service: input_button.press
+              target:
+                entity_id: input_button.bed_massage_foot
+            entity: input_button.bed_massage_foot
+
+          # Empty left
+          - type: markdown
+            content: " "
+
+          # Massage ON/OFF master toggle
+          - type: button
+            name: "ON / OFF"
+            icon: mdi:power
+            tap_action:
+              action: call-service
+              service: input_button.press
+              target:
+                entity_id: input_button.bed_massage_onoff
+            entity: input_button.bed_massage_onoff
+
+          # Empty right
+          - type: markdown
+            content: " "
+
+      # ──────────────────────────────────────────────────────────────────
+      # BRIDGE STATUS — shows ESP32 connectivity at a glance
+      # ──────────────────────────────────────────────────────────────────
+      - type: markdown
+        content: "### 📡 Bridge Status"
+
+      - type: entities
+        title: ESP32 Bridge
+        show_header_toggle: false
+        entities:
+          - entity: binary_sensor.sven_son_bed_bridge_status
+            name: "Connection"
+          - entity: sensor.sven_son_bed_bridge_wi_fi_signal
+            name: "Wi-Fi Signal"
+          - entity: sensor.sven_son_bed_bridge_uptime
+            name: "Uptime"
+          - entity: sensor.sven_son_bed_bridge_ip_address
+            name: "IP Address"
