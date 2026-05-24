@@ -87,9 +87,12 @@ Copy `home-assistant/packages/adjustable_bed.yaml` into your HA `packages/` fold
 
 ## Hardware Used
 
-- **Bed:** Sven & Son Platinum Series Adjustable Base (Split King / Queen)
-- **MCU:** ESP-WROOM-32 (38-pin dev board)
+- **Bed:** Sven & Son Platinum Series Adjustable Base (Split King — 2× Twin XL bases, each with independent BLE controller)
+- **BLE devices discovered:** `QRRM121500` (service FEE9 — Richmat proprietary) and `QRRM40218` (Nordic UART Service)
+- **MCU:** HiLetgo ESP-WROOM-32 (38-pin dev board)
 - **Approach 2 extras:** PC817 optocouplers (×8), 470Ω resistors (×8), 5V power supply, perfboard
+
+> **Status (May 2026):** BLE device names confirmed via nRF Connect (`QRRM121500` + `QRRM40218`). MAC addresses to be captured via ESP32 BLE scan. GitHub push via Cowork — confirmed working ✓
 
 ---
 
@@ -102,3 +105,7 @@ Issues and PRs welcome. If you own a different Sven & Son model and find differe
 ## License
 
 MIT — see [LICENSE](LICENSE) for details.
+
+---
+
+*Last updated: May 2026*
