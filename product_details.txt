@@ -1,0 +1,47 @@
+I wan to create an app to control my Sven & Son platinum series adjustable bed base
+
+“Bed base description - Elevate your nightly experience with our state-of-the-art Platinum Series bed frame, designed for unparalleled comfort and convenience. Drift into unparalleled relaxation with adjustable head (up to 75°) and foot (up to 45°) lifts, complemented by a unique 'Headboard Hugger' function that keeps you close to your nightstand. Additional pillow tilting and lumbar support ensure a night of personalized comfort and optimal spinal support. Navigate these features with our innovative ergonomic remote, unlocking the weightless wonders of Zero Gravity and Anti-Snore settings. Save your preferred configurations with memory positions, and enjoy the soft glow of under-bed lighting for a serene nighttime ambience. Charging your devices is hassle-free with built-in USB ports, and the variety of massage modes offer therapeutic relaxation. Seamlessly compatible with storage beds and platforms, this frame comes with a comprehensive 25-year warranty, guaranteeing durability and reliability. From its mattress retention system and adjustable leg heights to the emergency power-down feature and zero-clearance design, every detail has been meticulously crafted for your ultimate convenience. Indulge in luxury with a bed frame that merges aesthetic appeal, innovative features, and enduring qualit”
+
+Features “Adjustable Base:
+
+• Back Tilt (up to 75°)
+
+• Leg Tilt (up to 45°)
+
+• Head Tilt (up to 7°)
+
+• Lumbar Adjustment Bar (up to 4”)
+
+• Wireless Remote (with flashlight, zero-gravity, memory, anti-snore, and one-touch flat)
+
+• Dual Massage (3 modes)
+
+• USB Ports (USB and USB-C, both sides)
+
+• Under Bed Lighting (both sides)
+
+• Adjustable Legs (up to 12")
+
+• iOS and Android App
+
+• Bluetooth Enabled
+
+• Headboard Wall-Hugger (keeps you in line with your nightstand as you adjust)
+
+• Oeko-Tex® Certified
+
+“
+
+But remote is Bluetooth only and I want to be able to control remote operation when I am away from home using wifi so I got HiLetgo ESP-WROOM-32 ESP32 ESP-32S Development Board 2.4GHz Dual-Mode WiFi + Bluetooth Dual Cores Microcontroller Processor Integrated with Antenna RF AMP Filter AP STA for Arduino IDE- details - 2.4GHz Dual Mode WiFi + Bluetooth Development Board
+
+here is what i have on this IC- 
+ESP-32D
+WIFI+BT+BLE MCU, YYH-240827
+FCC ID:2As4N-ESP32
+Ultra-Low power consumption, works perfectly with the Arduino IDE
+
+Support LWIP protocol, Freertos
+
+SupportThree Modes: AP, STA, and AP+STA
+
+ESP32 is a safe, reliable, and scalable to a variety of application” I am planning to build this app using Claude coworker
