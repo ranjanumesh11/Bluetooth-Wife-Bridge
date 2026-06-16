@@ -11,15 +11,15 @@ jobs:
 
       - name: Detect and delete case-conflicting branches
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           # Get the current branch name
           CURRENT_BRANCH="${{ github.ref_name }}"
           
           echo "🔍 Checking branch: $CURRENT_BRANCH"
           
-          # Get all remote branches (excluding HEAD)
-          ALL_BRANCHES=$(git branch -r | sed 's/.*\///' | grep -v HEAD | sort -u)
+          # Get all branches from GitHub API (more reliable than git)
+          ALL_BRANCHES=$(gh api repos/${{ github.repository }}/branches --jq '.[].name' | sort -u)
           
           echo "📋 All branches:"
           echo "$ALL_BRANCHES"
@@ -48,15 +48,13 @@ jobs:
             echo ""
             echo "🗑️  Deleting conflicting branch: $CURRENT_BRANCH"
             
-            # Delete the branch via GitHub API
-            curl -X DELETE \
-              -H "Authorization: token $GITHUB_TOKEN" \
-              -H "Accept: application/vnd.github.v3+json" \
-              "https://api.github.com/repos/${{ github.repository }}/git/refs/heads/$CURRENT_BRANCH" \
-              || echo "Note: Could not delete via API (may already be deleted)"
+            # Delete the branch via GitHub CLI (more reliable)
+            gh api repos/${{ github.repository }}/git/refs/heads/$CURRENT_BRANCH -X DELETE \
+              && echo "✅ Branch '$CURRENT_BRANCH' deleted successfully" \
+              || echo "⚠️ Could not delete branch (may already be deleted or API issue)"
             
             echo ""
-            echo "✅ Recommended: Use lowercase naming instead: '$CONFLICTING_BRANCH'"
+            echo "💡 Recommended: Use lowercase naming instead: '$CONFLICTING_BRANCH'"
             exit 1
           else
             echo ""
