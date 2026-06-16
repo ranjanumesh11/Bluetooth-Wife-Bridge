@@ -1,0 +1,59 @@
+#!/bin/bash
+
+# ===========================================================================
+# Git Pre-Push Hook: Prevent Case-Sensitive Branch Name Conflicts
+# ===========================================================================
+# This hook prevents pushing branches with names that differ only by case
+# from existing branches (e.g., pushing "DEV" when "dev" already exists).
+#
+# Setup (one-time):
+#   git config core.hooksPath .githooks
+#
+# ===========================================================================
+
+set -e
+
+# Get the branch being pushed
+branch=$(git rev-parse --abbrev-ref HEAD)
+
+echo "🔍 Checking branch name: $branch"
+
+# Get all existing branches on remote (and local, in case it's not synced)
+remote_branches=$(git branch -r | sed 's/.*\///' | grep -v HEAD | sort -u)
+local_branches=$(git branch | sed 's/^[* ] //' | sort -u)
+
+all_branches=$(printf "%s\n%s" "$remote_branches" "$local_branches" | sort -u)
+
+# Check for case-insensitive duplicates
+conflict_found=false
+conflicting_branch=""
+
+while IFS= read -r existing_branch; do
+    if [[ -z "$existing_branch" ]]; then
+        continue
+    fi
+    
+    # Compare case-insensitively using bash parameter expansion
+    if [[ "${branch,,}" == "${existing_branch,,}" && "$branch" != "$existing_branch" ]]; then
+        conflict_found=true
+        conflicting_branch="$existing_branch"
+        break
+    fi
+done <<< "$all_branches"
+
+if [[ "$conflict_found" == true ]]; then
+    echo ""
+    echo "❌ PUSH REJECTED: Branch name conflict detected!"
+    echo ""
+    echo "   You're trying to push: '$branch'"
+    echo "   But this conflicts with: '$conflicting_branch'"
+    echo ""
+    echo "   Solution: Use consistent lowercase naming"
+    echo "   Rename your local branch:"
+    echo "     git branch -m $branch ${branch,,}"
+    echo ""
+    exit 1
+else
+    echo "✅ Branch name is valid: $branch"
+    exit 0
+fi
