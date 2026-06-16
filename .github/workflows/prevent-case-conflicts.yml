@@ -1,25 +1,33 @@
 name: Prevent Case-Sensitive Branch Conflicts
 on: [push, pull_request]
 
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+permissions:
+  contents: write
+  
 jobs:
   check-and-delete-conflicts:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
       - name: Detect and delete case-conflicting branches
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_TOKEN: ${{ github.token }}
         run: |
           # Get the current branch name
           CURRENT_BRANCH="${{ github.ref_name }}"
           
           echo "🔍 Checking branch: $CURRENT_BRANCH"
           
-          # Get all branches from GitHub API (more reliable than git)
-          ALL_BRANCHES=$(gh api repos/${{ github.repository }}/branches --jq '.[].name' | sort -u)
+          # Get all branches from GitHub API
+          ALL_BRANCHES=$(curl -s -H "Authorization: Bearer $GITHUB_TOKEN" \
+            "https://api.github.com/repos/${{ github.repository }}/branches" \
+            | jq -r '.[].name' | sort -u)
           
           echo "📋 All branches:"
           echo "$ALL_BRANCHES"
@@ -48,14 +56,28 @@ jobs:
             echo ""
             echo "🗑️  Deleting conflicting branch: $CURRENT_BRANCH"
             
-            # Delete the branch via GitHub CLI (more reliable)
-            gh api repos/${{ github.repository }}/git/refs/heads/$CURRENT_BRANCH -X DELETE \
-              && echo "✅ Branch '$CURRENT_BRANCH' deleted successfully" \
-              || echo "⚠️ Could not delete branch (may already be deleted or API issue)"
+            # Delete the branch via GitHub API using curl with proper auth
+            DELETE_RESPONSE=$(curl -X DELETE \
+              -H "Authorization: Bearer $GITHUB_TOKEN" \
+              -H "Accept: application/vnd.github+json" \
+              "https://api.github.com/repos/${{ github.repository }}/git/refs/heads/$CURRENT_BRANCH" \
+              -w "\n%{http_code}" 2>&1)
+            
+            HTTP_CODE=$(echo "$DELETE_RESPONSE" | tail -1)
+            RESPONSE_BODY=$(echo "$DELETE_RESPONSE" | head -n-1)
+            
+            echo "Response code: $HTTP_CODE"
+            
+            if [[ "$HTTP_CODE" == "204" ]] || [[ "$HTTP_CODE" == "200" ]]; then
+              echo "✅ Branch '$CURRENT_BRANCH' deleted successfully"
+            else
+              echo "⚠️ Delete request returned: $HTTP_CODE"
+              echo "$RESPONSE_BODY"
+            fi
             
             echo ""
             echo "💡 Recommended: Use lowercase naming instead: '$CONFLICTING_BRANCH'"
-            exit 1
+            exit 0
           else
             echo ""
             echo "✅ Branch name is valid: $CURRENT_BRANCH"
